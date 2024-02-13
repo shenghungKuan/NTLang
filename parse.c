@@ -20,7 +20,24 @@ void parse_error(char *err) {
     exit(-1);
 }
 
-char *parse_oper_strings[] = {"PLUS", "MINUS", "MULT", "DIV"};
+char *parse_oper_strings[] = {"PLUS", "MINUS", "MULT", "DIV", "LSR", "ASR", "LSL", "NOT", "AND", "OR", "XOR"};
+
+struct parse_oper_pair_st parse_oper_map[] = {
+    {TK_PLUS, OP_PLUS},
+    {TK_MINUS, OP_MINUS},
+    {TK_MULT, OP_MULT},
+    {TK_DIV, OP_DIV},
+    {TK_LSR, OP_LSR},
+    {TK_ASR, OP_ASR},
+    {TK_LSL, OP_LSL},
+    {TK_NOT, OP_NOT},
+    {TK_AND, OP_AND},
+    {TK_OR, OP_OR},
+    {TK_XOR, OP_XOR},
+    {TK_NONE, OP_NONE}
+};
+
+int size = (int)(sizeof(parse_oper_map) / sizeof(parse_oper_map[0]));
 
 
 /* We need to provide prototypes for the parsing functions because
@@ -60,22 +77,22 @@ struct parse_node_st * parse_expression(struct parse_table_st *pt,
     while (true) {
         tp = scan_table_get(st, 0);
         /* Check for valid operator */
-        if (tp->id == TK_PLUS || tp->id == TK_MINUS) {
-            /* Use TK_ANY as a wildcard */
-            scan_table_accept(st, TK_ANY);
-            np2 = parse_node_new(pt);
-            np2->type = EX_OPER2;
-            if (tp->id == TK_PLUS) {
-                np2->oper2.oper = OP_PLUS;
-            } else if (tp->id == TK_MINUS) {
-                np2->oper2.oper = OP_MINUS;
-            }
-            np2->oper2.left = np1;
-            /* Now parse second operand */
-            np2->oper2.right = parse_operand(pt, st);
-            np1 = np2;
-        } else {
-            break;
+        int i = 0;
+        for(i = 0; i < size; i++){
+        	if(tp->id == parse_oper_map[i].tkid){
+        		scan_table_accept(st, TK_ANY);
+        		np2 = parse_node_new(pt);
+        		np2->type = EX_OPER2;
+        		np2->oper2.oper = parse_oper_map[i].opid;
+        		np2->oper2.left = np1;
+        		np2->oper2.right = parse_operand(pt, st);
+        		np1 = np2;
+        		break;
+        	}
+        }
+
+        if(i == size){
+        	break;
         }
     }
 
@@ -91,15 +108,38 @@ struct parse_node_st * parse_operand(struct parse_table_st *pt,
         tp = scan_table_get(st, -1);
         np1 = parse_node_new(pt);
         np1->type = EX_INTVAL;
-        /* For Project01 you need to implement your own version of atoi() */
-        np1->intval.value = atoi(tp->value);
-    } else if (scan_table_accept(st, TK_MINUS)) {
-        np1 = parse_node_new(pt);
-        np1->type = EX_OPER1;
-        np1->oper1.oper = OP_MINUS;
-        np1->oper1.operand = parse_operand(pt, st);
+        /* For Project02 you need to implement your own version of atoi() */
+        np1->intval.value = toValue(tp->value, 10);
+    } else if(scan_table_accept(st, TK_BINLIT)){
+    	tp = scan_table_get(st, -1);
+    	np1 = parse_node_new(pt);
+    	np1->type = EX_INTVAL;
+    	np1->intval.value = toValue(tp->value, 2);
+    } else if(scan_table_accept(st, TK_HEXLIT)){
+       	tp = scan_table_get(st, -1);
+       	np1 = parse_node_new(pt);
+       	np1->type = EX_INTVAL;
+       	np1->intval.value = toValue(tp->value, 16);
+    } else if(scan_table_accept(st, TK_MINUS)){
+    	tp = scan_table_get(st, -1);
+    	np1 = parse_node_new(pt);
+    	np1->type = EX_OPER1;
+    	np1->oper1.oper = OP_MINUS;
+    	np1->oper1.operand = parse_operand(pt, st);
+    } else if(scan_table_accept(st, TK_NOT)){
+       	tp = scan_table_get(st, -1);
+       	np1 = parse_node_new(pt);
+       	np1->type = EX_OPER1;
+       	np1->oper1.oper = OP_NOT;
+       	np1->oper1.operand = parse_operand(pt, st);
+    } else if(scan_table_accept(st, TK_LPAREN)){
+    	tp = scan_table_get(st, -1);
+    	np1 = parse_expression(pt, st);
+    	if(!scan_table_accept(st, TK_RPAREN)){
+    		parse_error("Missing right paren");
+    	}
     } else {
-        parse_error("Bad operand");
+    	parse_error("Bad operand");
     }
 
     return np1;
@@ -130,4 +170,36 @@ void parse_tree_print_expr(struct parse_node_st *np, int level) {
 
 void parse_tree_print(struct parse_node_st *np) {
     parse_tree_print_expr(np, 0);    
+}
+
+void parse_args(struct config_st *cp, int argc, char **argv) {
+    int i = 1;
+
+    if (argc <= 2) {
+        printf("Usage: ./project01 -e \"expression\" -u -b base(2/16/10) -w width(4/8/16/32)\n");
+        exit(0);
+    }
+
+    while (i < argc) {
+    	if(argv[i][0] == '-'){
+	        if (argv[i][1] == 'e') {
+	            i += 1;
+	            strncpy(cp->input, argv[i], SCAN_INPUT_LEN);
+	            cp->input[SCAN_INPUT_LEN] = '\0';
+	        } else if(argv[i][1] == 'b'){
+	        	i += 1;
+	        	cp->base = toValue(argv[i], 10);
+	        } else if(argv[i][1] == 'w'){
+	        	i += 1;
+	        	cp->width = toValue(argv[i], 10);
+	        } else if(argv[i][1] == 'u' && cp->base == 10){
+	        	cp->unsign = true;
+	        }
+	        i += 1;
+        }
+    }
+
+    if (strnlen(cp->input, SCAN_INPUT_LEN) == 0) {
+        parse_error("No expression given to evaluate");
+    }
 }

@@ -33,17 +33,44 @@ whitespace ::= (' ' | '\t') (' ' | '\t')*
 
 enum scan_token_enum {
     TK_INTLIT, /* 1, 22, 403 */
+    TK_BINLIT,
+    TK_HEXLIT,
     TK_PLUS,   /* + */
     TK_MINUS,  /* - */
     TK_EOT,    /* end of text */
     TK_ANY,    /* A wildcard token used for parsing */
+    TK_MULT,   /* * */
+    TK_DIV,    /* / */
+    TK_LSR,    /* >> */
+    TK_ASR,    /* >- */
+    TK_LSL,    /* << */
+    TK_NOT,    /* ~ */
+    TK_AND,    /* & */
+    TK_OR,     /* | */
+    TK_XOR,    /* ^ */
+    TK_LPAREN, /* ( */
+    TK_RPAREN, /* ) */
+    TK_NONE
 };
 
 #define SCAN_TOKEN_STRINGS {\
     "TK_INTLIT",\
+    "TK_BINLIT",\
+    "TK_HEXLIT",\
     "TK_PLUS",\
     "TK_MINUS",\
     "TK_EOT",\
+    "TK_MULT",\
+    "TK_DIV",\
+    "TK_LSR",\
+    "TK_ASR",\
+    "TK_LSL",\
+    "TK_NOT",\
+    "TK_AND",\
+    "TK_OR",\
+    "TK_XOR",\
+    "TK_LPAREN",\
+    "TK_RPAREN",\
     "TK_ANY"\
 };
 
@@ -83,7 +110,7 @@ operator   ::= '+' | '-'
 */
 
 enum parse_expr_enum {EX_INTVAL, EX_OPER1, EX_OPER2};
-enum parse_oper_enum {OP_PLUS, OP_MINUS, OP_MULT, OP_DIV};
+enum parse_oper_enum {OP_PLUS, OP_MINUS, OP_MULT, OP_DIV, OP_LSR, OP_ASR, OP_LSL, OP_NOT, OP_AND, OP_OR, OP_XOR, OP_NONE};
 
 struct parse_node_st {
     enum parse_expr_enum type;
@@ -96,6 +123,8 @@ struct parse_node_st {
                 struct parse_node_st *right;} oper2;
     };
 };
+
+
 
 
 #define PARSE_TABLE_LEN 1024
@@ -115,13 +144,27 @@ struct parse_node_st * parse_program(struct parse_table_st *pt,
                                         struct scan_table_st *st);
 void parse_tree_print(struct parse_node_st *np);
 
+struct parse_oper_pair_st {
+    enum scan_token_enum tkid;
+    enum parse_oper_enum opid;
+};
+
+
+
 /*
  * config
  */
 
+#define OUTPUT_LEN 64
 struct config_st {
     char input[SCAN_INPUT_LEN];
+    char output[OUTPUT_LEN];
+    bool unsign;
+    int width;
+    int base;
 };
+
+void parse_args(struct config_st *cp, int argc, char **argv);
 
 /*
  * eval.c
@@ -130,4 +173,6 @@ struct config_st {
 uint32_t eval(struct parse_node_st *pt);
 void eval_print(struct config_st *cp, uint32_t value);
 
-
+/*conv.c*/
+void conversion_error(char* err);
+uint32_t toValue(char* str, int base);

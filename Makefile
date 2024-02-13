@@ -1,5 +1,5 @@
 PROG = project01
-OBJS = scan.o parse.o eval.o
+OBJS = scan.o parse.o eval.o conv.o
 HEADERS = ntlang.h
 
 CFLAGS = -g
