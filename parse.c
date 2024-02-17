@@ -66,34 +66,38 @@ struct parse_node_st * parse_program(struct parse_table_st *pt,
     return np1;
 }
 
-struct parse_node_st * parse_expression(struct parse_table_st *pt, 
-                                        struct scan_table_st *st) {
+int lookup(struct scan_table_st *st){
     struct scan_token_st *tp;
-    struct parse_node_st *np1, *np2;
+	
+	tp = scan_table_get(st, 0);
+	
+	for(int i = 0; i < size; i++){
+       	if(tp->id == parse_oper_map[i].tkid){
+       		scan_table_accept(st, TK_ANY);
+       		return parse_oper_map[i].opid;
+       	}
+	}
+	return OP_NONE;
+}
 
+struct parse_node_st * parse_expression(struct parse_table_st *pt, struct scan_table_st *st) {
+    struct parse_node_st *np1, *np2;
     /* An expression must start with an operand. */
     np1 = parse_operand(pt, st);
-
+    int opid;
+    
     while (true) {
-        tp = scan_table_get(st, 0);
         /* Check for valid operator */
-        int i = 0;
-        for(i = 0; i < size; i++){
-        	if(tp->id == parse_oper_map[i].tkid){
-        		scan_table_accept(st, TK_ANY);
-        		np2 = parse_node_new(pt);
-        		np2->type = EX_OPER2;
-        		np2->oper2.oper = parse_oper_map[i].opid;
-        		np2->oper2.left = np1;
-        		np2->oper2.right = parse_operand(pt, st);
-        		np1 = np2;
-        		break;
-        	}
-        }
-
-        if(i == size){
+        opid = lookup(st);
+        if(opid == OP_NONE){
         	break;
         }
+        np2 = parse_node_new(pt);
+        np2->type = EX_OPER2;
+        np2->oper2.oper = opid;
+        np2->oper2.left = np1;
+        np2->oper2.right = parse_operand(pt, st);
+        np1 = np2;
     }
 
     return np1;
@@ -109,17 +113,17 @@ struct parse_node_st * parse_operand(struct parse_table_st *pt,
         np1 = parse_node_new(pt);
         np1->type = EX_INTVAL;
         /* For Project02 you need to implement your own version of atoi() */
-        np1->intval.value = toValue(tp->value, 10);
+        np1->intval.value = to_value(tp->value, 10);
     } else if(scan_table_accept(st, TK_BINLIT)){
     	tp = scan_table_get(st, -1);
     	np1 = parse_node_new(pt);
     	np1->type = EX_INTVAL;
-    	np1->intval.value = toValue(tp->value, 2);
+    	np1->intval.value = to_value(tp->value, 2);
     } else if(scan_table_accept(st, TK_HEXLIT)){
        	tp = scan_table_get(st, -1);
        	np1 = parse_node_new(pt);
        	np1->type = EX_INTVAL;
-       	np1->intval.value = toValue(tp->value, 16);
+       	np1->intval.value = to_value(tp->value, 16);
     } else if(scan_table_accept(st, TK_MINUS)){
     	tp = scan_table_get(st, -1);
     	np1 = parse_node_new(pt);
@@ -188,10 +192,10 @@ void parse_args(struct config_st *cp, int argc, char **argv) {
 	            cp->input[SCAN_INPUT_LEN] = '\0';
 	        } else if(argv[i][1] == 'b'){
 	        	i += 1;
-	        	cp->base = toValue(argv[i], 10);
+	        	cp->base = to_value(argv[i], 10);
 	        } else if(argv[i][1] == 'w'){
 	        	i += 1;
-	        	cp->width = toValue(argv[i], 10);
+	        	cp->width = to_value(argv[i], 10);
 	        } else if(argv[i][1] == 'u' && cp->base == 10){
 	        	cp->unsign = true;
 	        }

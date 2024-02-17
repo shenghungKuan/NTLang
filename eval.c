@@ -43,11 +43,8 @@ uint32_t eval(struct parse_node_st *pt) {
 		} else if (pt->oper2.oper == OP_XOR) {
 			v1 = v1 ^ v2;
 		} else if(pt->oper2.oper == OP_ASR){
-			if(v1 >= 2147483648){
-			for(int i = 0; i < (int)v2 && i < 32; i ++){
-					v1 = v1 >> 1;
-					v1 = v1 | 2147483648;
-				}
+			if(v1 >> 31){
+				v1 = (v1 >> v2) | ~(uint32_t)0 << (32 - v2);
 			} else{
 				v1 = v1 >> v2;
 			}
@@ -59,12 +56,7 @@ uint32_t eval(struct parse_node_st *pt) {
     return v1;
 }
 
-void eval_print(struct config_st *cp, uint32_t value) {
-    /*
-     * Handle -b -w -u
-     *
-     * Use your own conversion functions for uint32_t to string.
-     */
+void eval_to_string(struct config_st *cp, uint32_t value){
 
 	char tmp[OUTPUT_LEN];
 	int i = 0;
@@ -107,47 +99,59 @@ void eval_print(struct config_st *cp, uint32_t value) {
 		
 		tmp[i] = '\0';
 	
-		for(int j = 0; j < i; j++){
-			cp->output[j] = tmp[i - j - 1];
+		cp->output[0] = '0';
+		cp->output[1] = 'b';
+		for(int j = 2; j < i + 2; j++){
+			cp->output[j] = tmp[i - j + 1];
 		}
 	
-		cp->output[i] = '\0';
-		printf("0b%s", cp->output);
+		cp->output[i + 2] = '\0';
+		// printf("0b%s", cp->output);
 	} else if(base == 16){
 		for(i = i; i < width / 4; i++){
 			tmp[i] = '0';
 		}
 		
 		tmp[i] = '\0';
-	
-		for(int j = 0; j < i; j++){
-			cp->output[j] = tmp[i - j - 1];
+
+		cp->output[0] = '0';
+		cp->output[1] = 'x';
+		for(int j = 2; j < i + 2; j++){
+			cp->output[j] = tmp[i - j + 1];
 		}
 	
-		cp->output[i] = '\0';
-		printf("0x%s", cp->output);
+		cp->output[i + 2] = '\0';
 	} else if(base == 10){
-		for(int j = 0; j < i; j++){
-			cp->output[j] = tmp[i - j - 1];
-		}
-
 		if(i == 0){
-			cp->output[i] = '0';
+			cp->output[0] = '0';
 			i++;
-		}
-		cp->output[i] = '\0';
-
-		if(negative){
-			printf("-%s", cp->output);
+		} else if(negative){
+			cp->output[0] = '-';
+			for(int j = 1; j < i + 1; j++){
+				cp->output[j] = tmp[i - j];
+			}
+			i++;
 		} else{
-			printf("%s", cp->output);
+			for(int j = 0; j < i; j++){
+				cp->output[j] = tmp[i - j - 1];
+			}
 		}
+
+		cp->output[i] = '\0';
 
 	} else{
 		eval_error("Invalid base");
 	}
-    printf("\n");
+}
 
-	
-	
+void eval_print(struct config_st *cp, uint32_t value) {
+    /*
+     * Handle -b -w -u
+     *
+     * Use your own conversion functions for uint32_t to string.
+     */
+
+	eval_to_string(cp, value);
+	printf("%s\n", cp->output);
+
 }

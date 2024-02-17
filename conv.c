@@ -4,7 +4,7 @@ void conversion_error(char* err){
 	printf("conversion error: %s", err);
 }
 
-uint32_t toValue(char* str, int base){
+uint32_t to_value(char* str, int base){
 	int size = strlen(str);
 	uint32_t value = 0;
 	uint32_t prev;

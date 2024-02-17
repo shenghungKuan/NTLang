@@ -12,19 +12,19 @@
  */
  
 /* 
+whitespace  ::=  (' ' | '\t') (' ' | '\t')*
 
-# Scanner EBNF (microsyntax)
-
-tokens ::= (token)*
-token  ::= intlit | symbol
-symbol ::= '+'
-integer ::= digit (digit)*
-digit  ::= '0' | '1' | ... | '9'
+tokenlist  ::= (token)*
+token      ::= intlit | hexlit | binlit | symbol
+symbol     ::= '+' | '-' | '*' | '/' | '>>' | '>-' | '<<' | '~' | '&' | '|' | '^'
+intlit     ::= digit (digit)*
+hexlit     ::= '0x' hexdigit (hexdigit)*
+binlit     ::= '0b' ['0', '1'] (['0', '1'])*
+hexdigit   ::= 'a' | ... | 'f' | 'A' | ... | 'F' | digit
+digit      ::= '0' | ... | '9'
 
 # Ignore
-
-whitespace ::= (' ' | '\t') (' ' | '\t')*
-
+whitespace ::= ' ' | '\t' (' ' | '\t')*
 */
 
 #define SCAN_TOKEN_LEN 32
@@ -102,11 +102,17 @@ bool scan_table_accept(struct scan_table_st *st, enum scan_token_enum tk_expecte
 # Parser
 
 program    ::= expression EOT
-expression ::= operand (operator operand)*
-operand    ::= intlit
-             | '-' operand
 
-operator   ::= '+' | '-'
+expression ::= operand (operator operand)*
+
+operand    ::= intlit
+             | hexlit
+             | binlit
+             | '-' operand
+             | '~' operand
+             | '(' expression ')'
+
+operator   ::= '+' | '-' | '*' | '/' | '>>' | '<<' | '&' | '|' | '^' | '>-' | '~'
 */
 
 enum parse_expr_enum {EX_INTVAL, EX_OPER1, EX_OPER2};
@@ -123,9 +129,6 @@ struct parse_node_st {
                 struct parse_node_st *right;} oper2;
     };
 };
-
-
-
 
 #define PARSE_TABLE_LEN 1024
 
@@ -149,7 +152,7 @@ struct parse_oper_pair_st {
     enum parse_oper_enum opid;
 };
 
-
+int lookup(struct scan_table_st *st);
 
 /*
  * config
@@ -172,7 +175,8 @@ void parse_args(struct config_st *cp, int argc, char **argv);
 
 uint32_t eval(struct parse_node_st *pt);
 void eval_print(struct config_st *cp, uint32_t value);
+void eval_to_string(struct config_st *cp, uint32_t value);
 
 /*conv.c*/
 void conversion_error(char* err);
-uint32_t toValue(char* str, int base);
+uint32_t to_value(char* str, int base);
