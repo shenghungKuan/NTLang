@@ -1,7 +1,7 @@
 /* eval.c - tree evaluation and value printing */
 
 #include "ntlang.h"
-
+/*prints error messages*/
 void eval_error(char *err) {
     printf("eval_error: %s\n", err);
     exit(-1);
@@ -66,9 +66,11 @@ void eval_to_string(struct config_st *cp, uint32_t value){
 	uint32_t mask;
 	uint32_t org_value = value;
 	bool negative = false;
-	
+
+	// masking for different width
 	if(width == 4 || width == 8 || width == 16){
 		mask = (1 << width) - 1;
+	// 32-bit mask overflows so it needs to be handled seperately
 	} else if(width == 32){
 		mask = 4294967295;
 	} else{
@@ -76,11 +78,13 @@ void eval_to_string(struct config_st *cp, uint32_t value){
 	}
 	value = mask & value;
 
+	// handle signed value with base of 10
 	if(base == 10 && !cp->unsign  && (value & (1 << (width - 1)))){
 		negative = true;
 		value = (-org_value) & mask;
 	}
 
+	// converts the uint32_t value into a string representation
 	while(value > 0){
 		digit = value % base;
 		if(digit >= 10){
@@ -92,6 +96,7 @@ void eval_to_string(struct config_st *cp, uint32_t value){
 		i++;
 	}
 
+	// handle the printing format for different bases
 	if(base == 2){
 		for(i = i; i < width; i++){
 			tmp[i] = '0';
@@ -106,7 +111,6 @@ void eval_to_string(struct config_st *cp, uint32_t value){
 		}
 	
 		cp->output[i + 2] = '\0';
-		// printf("0b%s", cp->output);
 	} else if(base == 16){
 		for(i = i; i < width / 4; i++){
 			tmp[i] = '0';
