@@ -1,4 +1,4 @@
-PROG = project01
+PROG = ntlang
 OBJS = scan.o parse.o eval.o conv.o
 HEADERS = ntlang.h
 
